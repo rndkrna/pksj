@@ -1,0 +1,123 @@
+# ============================================================
+# SIAKAD UMRAH - Automated DevSecOps Pipeline
+# Pipeline Keamanan Otomatis Sebelum Deployment
+#
+# Referensi Laporan PKSJ:
+# - Bab V: Rencana Validasi dan Dokumentasi Bukti
+# - Deliverable 3: "Pipeline otomatis yang memeriksa keamanan kode dan aplikasi sebelum di-deploy"
+# - Kontrol yang diuji:
+#   * Stage 1: SAST (Static Code Security Analysis) - CT-05
+#   * Stage 2: SCA (Software Composition Analysis / npm audit) - Tabel 4.2
+#   * Stage 3: Secret Detection (Pemindaian kebocoran password) - Tabel 4.2
+#   * Stage 4: Dockerfile Linting (Hadolint) - Tabel 4.2
+#   * Stage 5: Container Vulnerability Scanning (Trivy) - Tabel 4.2
+#   * Stage 6: Security Verification Suite (Challenge Tests CT-01 s.d. CT-10)
+#
+# Tim PKSJ UMRAH
+# ============================================================
+
+name: SIAKAD DevSecOps Pipeline
+
+on:
+  push:
+    branches: [ main, master, staging ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  # ============================================================
+  # TAHAP 1 & 2: SAST, DEPENDENCY AUDIT & SECRET SCAN
+  # ============================================================
+  security-code-scan:
+    name: 1. Code Security & Secret Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Kode Sumber
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install Dependensi
+        run: npm ci
+
+      # Stage 2: Dependency Vulnerability Scan (SCA)
+      - name: 🛡️ Audit Dependensi (npm audit)
+        run: |
+          echo "Menjalankan audit kerentanan pustaka..."
+          npm audit --audit-level=high
+
+      # Stage 1: Static Code Security Linting
+      - name: 🔍 Static Code Analysis (Linting Keamanan)
+        run: |
+          npx eslint . --ext .js
+
+      # Stage 3: Secret & Password Leak Scanning
+      - name: 🔑 Pemindaian Kebocoran Password & Kredensial
+        run: |
+          node scripts/secret-scan.js
+
+  # ============================================================
+  # TAHAP 3 & 4: CONTAINER SECURITY & DOCKERFILE LINTING
+  # ============================================================
+  container-security-scan:
+    name: 2. Container Security (Hadolint & Trivy)
+    runs-on: ubuntu-latest
+    needs: security-code-scan
+
+    steps:
+      - name: Checkout Kode Sumber
+        uses: actions/checkout@v4
+
+      # Hadolint: Linting Dockerfile sesuai best practice
+      - name: 🐳 Dockerfile Linting (Hadolint)
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: Dockerfile
+          config: .hadolint.yaml
+          failure-threshold: error
+
+      # Build Docker Image untuk scanning
+      - name: 🔨 Build Docker Image
+        run: |
+          docker build -t siakad-umrah:${{ github.sha }} .
+
+      # Trivy: Vulnerability Scan untuk Container Image
+      - name: 🔬 Pemindaian Kerentanan Container (Trivy)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'siakad-umrah:${{ github.sha }}'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+
+  # ============================================================
+  # TAHAP 5: SECURITY CHALLENGE TESTS & VERIFICATION
+  # ============================================================
+  security-acceptance-tests:
+    name: 3. Security Acceptance Tests (CT-01 s.d. CT-10)
+    runs-on: ubuntu-latest
+    needs: container-security-scan
+
+    steps:
+      - name: Checkout Kode Sumber
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Dependensi
+        run: npm ci
+
+      - name: 🧪 Jalankan Verifikasi Otomatis Kontrol Keamanan (CT Suite)
+        run: |
+          node scripts/security-check.js --strict

@@ -1,0 +1,96 @@
+# ============================================================
+# SIAKAD UMRAH - Kubernetes NetworkPolicies
+# Implementasi Baseline Kebijakan Firewall/NGFW (Tabel 4.1 & Bab III)
+#
+# Pemetaan Aturan Firewall Laporan PKSJ:
+# - FW-01 & FW-03: Ingress ke App hanya dari Ingress Controller / Reverse Proxy
+# - FW-04: Ingress ke DB hanya dari App Pods (Port 3306)
+# - FW-05: Deny koneksi langsung dari DMZ / Luar ke Basis Data
+# - FW-08: Default Deny untuk semua lalu lintas yang tidak didefinisikan
+# ============================================================
+
+# 1. DEFAULT DENY ALL (FW-08: Default-Deny Baseline)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: siakad
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+
+---
+# 2. KEBIJAKAN APP (FW-01, FW-03, FW-04)
+# Mengizinkan Ingress ke App pada port 3000
+# Mengizinkan Egress dari App ke DB (port 3306) dan CoreDNS (port 53)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: siakad-app-netpolicy
+  namespace: siakad
+spec:
+  podSelector:
+    matchLabels:
+      app: siakad
+      tier: app
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # FW-03: Allow ingress ke port 3000 dari Ingress Controller / DMZ
+    - ports:
+        - protocol: TCP
+          port: 3000
+  egress:
+    # FW-04: Allow egress dari App ke DB pada TCP 3306
+    - to:
+        - podSelector:
+            matchLabels:
+              app: siakad
+              tier: database
+      ports:
+        - protocol: TCP
+          port: 3306
+    # Allow DNS lookup ke CoreDNS cluster
+    - to:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+
+---
+# 3. KEBIJAKAN DATABASE (FW-04, FW-05, TB-3)
+# Hanya izinkan koneksi masuk dari Pod dengan label tier: app pada port 3306.
+# FW-05: Blokir semua akses selain dari host aplikasi!
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: siakad-db-netpolicy
+  namespace: siakad
+spec:
+  podSelector:
+    matchLabels:
+      app: siakad
+      tier: database
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # FW-04: Allow ingress HANYA dari pod tier: app pada port 3306
+    - from:
+        - podSelector:
+            matchLabels:
+              app: siakad
+              tier: app
+      ports:
+        - protocol: TCP
+          port: 3306
+  # DB tidak butuh inisiasi egress ke luar
+  egress: []

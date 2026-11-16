@@ -1,0 +1,214 @@
+# ============================================================
+# SIAKAD UMRAH - Kubernetes Deployment Manifests
+# Implementasi Host Hardening & Zero Trust (Bab III & IV)
+#
+# Referensi Laporan PKSJ:
+# - Tabel 4.2: Hardening Host Server Aplikasi
+#   * Akun & Hak Istimewa: runAsNonRoot, UID 1001, allowPrivilegeEscalation: false
+#   * Proteksi Endpoint: readOnlyRootFilesystem, drop ALL capabilities
+#   * Rahasia: Env via Secret & ConfigMap
+# - R-05 (Ketersediaan): Resource requests/limits, readiness/liveness probes
+# - TB-2 & TB-3: Pemisahan pod aplikasi dan basis data
+# ============================================================
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: siakad-app
+  namespace: siakad
+  labels:
+    app: siakad
+    tier: app
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: siakad
+      tier: app
+  template:
+    metadata:
+      labels:
+        app: siakad
+        tier: app
+    spec:
+      # Tabel 4.2: Akun dan hak istimewa (Pod-level Security Context)
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        runAsGroup: 1001
+        fsGroup: 1001
+        seccompProfile:
+          type: RuntimeDefault
+
+      containers:
+        - name: siakad-app
+          image: siakad-app:1.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+              name: http
+              protocol: TCP
+
+          # Tabel 4.2: Proteksi endpoint (Container-level Security Context)
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1001
+            capabilities:
+              drop:
+                - ALL
+
+          # R-05 (Ketersediaan): Resource Quotas & Limits
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+
+          # Injeksi konfigurasi non-sensitif dari ConfigMap
+          envFrom:
+            - configMapRef:
+                name: siakad-config
+
+          # Injeksi kredensial dari Kubernetes Secret
+          env:
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: siakad-secret
+                  key: DB_USER
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: siakad-secret
+                  key: DB_PASSWORD
+            - name: SESSION_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: siakad-secret
+                  key: SESSION_SECRET
+
+          # R-05 (Ketersediaan): Health Probes
+          livenessProbe:
+            httpGet:
+              path: /auth/login
+              port: 3000
+            initialDelaySeconds: 20
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+          readinessProbe:
+            httpGet:
+              path: /auth/login
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 2
+
+          # Volume mount untuk area writable di read-only filesystem
+          volumeMounts:
+            - name: logs-volume
+              mountPath: /app/logs
+            - name: backups-volume
+              mountPath: /app/backups
+            - name: tmp-volume
+              mountPath: /tmp
+
+      volumes:
+        - name: logs-volume
+          emptyDir: {}
+        - name: backups-volume
+          emptyDir: {}
+        - name: tmp-volume
+          emptyDir:
+            medium: Memory
+            sizeLimit: 64Mi
+
+---
+# ============================================================
+# Basis Data Service & Deployment (Database Pod)
+# TB-3: Zona Basis Data
+# ============================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: siakad-db
+  namespace: siakad
+  labels:
+    app: siakad
+    tier: database
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: siakad
+      tier: database
+  template:
+    metadata:
+      labels:
+        app: siakad
+        tier: database
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999  # mysql user
+        fsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: mysql
+          image: mysql:8.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3306
+              name: mysql
+              protocol: TCP
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+              add:
+                - SETPCAP
+                - AUDIT_WRITE
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "256Mi"
+            limits:
+              cpu: "1000m"
+              memory: "512Mi"
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: siakad-secret
+                  key: DB_ROOT_PASSWORD
+            - name: MYSQL_DATABASE
+              value: "siakad_dbs"
+            - name: MYSQL_USER
+              valueFrom:
+                secretKeyRef:
+                  name: siakad-secret
+                  key: DB_USER
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: siakad-secret
+                  key: DB_PASSWORD
+          volumeMounts:
+            - name: mysql-persistent-storage
+              mountPath: /var/lib/mysql
+      volumes:
+        - name: mysql-persistent-storage
+          emptyDir: {}

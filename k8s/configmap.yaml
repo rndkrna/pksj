@@ -1,0 +1,25 @@
+# ============================================================
+# SIAKAD UMRAH - Kubernetes ConfigMap
+# Referensi: Tabel 4.2 (Hardening Host Server Aplikasi - Aplikasi & Rahasia Konfigurasi)
+# Nilai non-sensitif dipisahkan dari image dan rahasia
+# ============================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: siakad-config
+  namespace: siakad
+  labels:
+    app: siakad
+    tier: app
+data:
+  NODE_ENV: "production"
+  PORT: "3000"
+  DB_HOST: "siakad-db-svc"
+  DB_PORT: "3306"
+  DB_NAME: "siakad_dbs"
+  RATE_LIMIT_WINDOW_MS: "900000"
+  RATE_LIMIT_MAX: "200"
+  LOGIN_RATE_LIMIT_MAX: "5"
+  LOGIN_LOCKOUT_MINUTES: "15"
+  SESSION_MAX_AGE: "1800000"
+  BCRYPT_SALT_ROUNDS: "12"

@@ -1,0 +1,40 @@
+# ============================================================
+# SIAKAD UMRAH - Git Ignore
+# Referensi Laporan PKSJ: Tabel 4.2 (Rahasia Konfigurasi)
+# "Simpan kredensial di konfigurasi terlindungi; jangan commit ke repositori"
+# ============================================================
+
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# File Environment & Kredensial Sensitif (Wajib Diabaikan)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Sertifikat & Kunci Privat SSL
+nginx/ssl/*.key
+nginx/ssl/*.crt
+nginx/ssl/*.pem
+
+# Runtime Logs
+logs/
+*.log
+
+# Database Backups / Dumps
+backups/*.sql
+
+# Editor & IDE Directories
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Operating System Files
+.DS_Store
+Thumbs.db

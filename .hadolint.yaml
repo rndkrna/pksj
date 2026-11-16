@@ -1,0 +1,9 @@
+# ============================================================
+# SIAKAD UMRAH - Hadolint Configuration (Dockerfile Linter)
+# Referensi: Tabel 4.2 (Hardening Host Server Aplikasi)
+# ============================================================
+ignored:
+  # Abaikan peringatan pin versi apk di alpine jika menggunakan latest stable
+  - DL3018
+trustedRegistries:
+  - docker.io

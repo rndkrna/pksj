@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.2/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="/public/css/style.css" rel="stylesheet">
+</head>
+<body>
+  <%- include('../partials/navbar') %>
+
+  <div class="container-fluid">
+    <div class="row">
+      <%- include('../partials/sidebar') %>
+
+      <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 main-content">
+        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+          <h4 class="fw-bold"><i class="bi bi-shield-lock-fill text-danger me-2"></i>Log Audit Sistem (A-05 / R-03)</h4>
+          <span class="badge bg-secondary fs-6 px-3 py-2">Total Rekaman: <%= total %> Log</span>
+        </div>
+
+        <!-- Security Hardening Information Alert -->
+        <div class="security-alert-box mb-3">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <div class="fw-bold text-success mb-1">
+                <i class="bi bi-patch-check-fill me-1"></i>Karakteristik Keamanan Log Audit (Laporan PKSJ R-03, SR-05, CT-08)
+              </div>
+              <div class="small text-secondary">
+                Log disimpan secara terpusat (Dual-write: MySQL <code>audit_log</code> & Winston <code>logs/audit.log</code>). 
+                Prinsip <strong>Append-Only</strong> & <strong>Non-Repudiation</strong>: Pengguna manapun termasuk Administrator tidak memiliki fasilitas untuk mengubah atau menghapus riwayat audit.
+              </div>
+            </div>
+            <span class="badge bg-dark text-white px-3 py-2 font-monospace">APPEND-ONLY</span>
+          </div>
+        </div>
+
+        <!-- Filter Form -->
+        <div class="card border-0 shadow-sm mb-3">
+          <div class="card-body p-3 bg-light rounded">
+            <form method="GET" action="/admin/audit-log" class="row g-2 align-items-end">
+              <div class="col-md-2">
+                <label class="form-label small fw-semibold text-secondary">Username</label>
+                <input type="text" name="username" class="form-control form-control-sm" placeholder="Cari user..." value="<%= filters.username || '' %>">
+              </div>
+              <div class="col-md-2">
+                <label class="form-label small fw-semibold text-secondary">Aksi / Event</label>
+                <input type="text" name="action" class="form-control form-control-sm" placeholder="Contoh: LOGIN, GRADE..." value="<%= filters.action || '' %>">
+              </div>
+              <div class="col-md-2">
+                <label class="form-label small fw-semibold text-secondary">Status</label>
+                <select name="status" class="form-select form-select-sm">
+                  <option value="">-- Semua Status --</option>
+                  <option value="success" <%= filters.status === 'success' ? 'selected' : '' %>>SUCCESS</option>
+                  <option value="failed" <%= filters.status === 'failed' ? 'selected' : '' %>>FAILED</option>
+                  <option value="blocked" <%= filters.status === 'blocked' ? 'selected' : '' %>>BLOCKED</option>
+                </select>
+              </div>
+              <div class="col-md-2">
+                <label class="form-label small fw-semibold text-secondary">Tanggal Mulai</label>
+                <input type="date" name="dateFrom" class="form-control form-control-sm" value="<%= filters.dateFrom || '' %>">
+              </div>
+              <div class="col-md-2">
+                <label class="form-label small fw-semibold text-secondary">Tanggal Sampai</label>
+                <input type="date" name="dateTo" class="form-control form-control-sm" value="<%= filters.dateTo || '' %>">
+              </div>
+              <div class="col-md-2 d-flex gap-1">
+                <button type="submit" class="btn btn-primary btn-sm w-100"><i class="bi bi-funnel-fill me-1"></i>Filter</button>
+                <a href="/admin/audit-log" class="btn btn-outline-secondary btn-sm" title="Reset Filter"><i class="bi bi-arrow-counterclockwise"></i></a>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- Tabel Log -->
+        <div class="card border-0 shadow-sm">
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table table-hover table-sm align-middle mb-0 font-monospace" style="font-size: 0.85rem;">
+                <thead class="table-dark">
+                  <tr>
+                    <th style="width: 50px;">ID</th>
+                    <th style="width: 170px;">Timestamp</th>
+                    <th>User / Aktor</th>
+                    <th>Peran</th>
+                    <th>Peristiwa / Aksi</th>
+                    <th>Target Resource</th>
+                    <th>Rincian Catatan</th>
+                    <th>IP Address</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% if (logs.length === 0) { %>
+                    <tr><td colspan="9" class="text-center py-4 text-muted">Tidak ditemukan rekaman log yang cocok dengan filter.</td></tr>
+                  <% } %>
+                  <% logs.forEach(log => { %>
+                    <tr class="<%= log.status === 'blocked' ? 'table-danger' : log.status === 'failed' ? 'table-warning' : '' %>">
+                      <td>#<%= log.id %></td>
+                      <td class="text-nowrap text-secondary"><%= formatDate(log.created_at) %></td>
+                      <td><strong><%= log.username %></strong></td>
+                      <td><span class="badge bg-secondary"><%= log.role %></span></td>
+                      <td class="fw-bold"><%= log.action %></td>
+                      <td class="text-truncate" style="max-width: 130px;" title="<%= log.resource %>"><%= log.resource || '-' %></td>
+                      <td class="text-truncate" style="max-width: 250px;" title="<%= log.details %>"><%= log.details || '-' %></td>
+                      <td class="text-muted"><%= log.ip_address || '127.0.0.1' %></td>
+                      <td>
+                        <span class="badge bg-<%= log.status === 'success' ? 'success' : log.status === 'blocked' ? 'danger' : 'warning' %>">
+                          <i class="bi bi-<%= log.status === 'success' ? 'check-circle' : log.status === 'blocked' ? 'shield-x' : 'exclamation-circle' %> me-1"></i>
+                          <%= log.status.toUpperCase() %>
+                        </span>
+                      </td>
+                    </tr>
+                  <% }) %>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Pagination -->
+          <% if (totalPages > 1) { %>
+            <div class="card-footer bg-white d-flex justify-content-between align-items-center py-2">
+              <span class="small text-muted">Halaman <%= page %> dari <%= totalPages %></span>
+              <ul class="pagination pagination-sm mb-0">
+                <% for (let i = 1; i <= totalPages; i++) { %>
+                  <li class="page-item <%= i === page ? 'active' : '' %>">
+                    <a class="page-link" href="/admin/audit-log?page=<%= i %>&username=<%= filters.username || '' %>&action=<%= filters.action || '' %>&status=<%= filters.status || '' %>&dateFrom=<%= filters.dateFrom || '' %>&dateTo=<%= filters.dateTo || '' %>"><%= i %></a>
+                  </li>
+                <% } %>
+              </ul>
+            </div>
+          <% } %>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="/public/js/app.js"></script>
+</body>
+</html>
+

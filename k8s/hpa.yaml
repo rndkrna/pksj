@@ -1,0 +1,30 @@
+# ============================================================
+# SIAKAD UMRAH - Horizontal Pod Autoscaler (HPA)
+# Referensi: R-05 (Ketersediaan Layanan & Pemantauan Kapasitas)
+# Melindungi sistem dari lonjakan beban akses KRS dan Nilai
+# ============================================================
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: siakad-app-hpa
+  namespace: siakad
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: siakad-app
+  minReplicas: 2
+  maxReplicas: 5
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80

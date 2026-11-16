@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Masuk - SIAKAD Universitas Maritim Raja Ali Haji</title>
+  <!-- Bootstrap 5 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.2/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { font-family: 'Inter', sans-serif; }
+    body {
+      background: radial-gradient(circle at top right, #1e3a8a, #0f172a);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .card-login {
+      background: #ffffff;
+      border-radius: 16px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+      max-width: 440px;
+      width: 100%;
+      overflow: hidden;
+      border: none;
+    }
+    .card-header-custom {
+      background: linear-gradient(135deg, #1e40af, #2563eb);
+      color: white;
+      padding: 30px 24px;
+      text-align: center;
+    }
+    .badge-security {
+      background: rgba(16, 185, 129, 0.15);
+      color: #065f46;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      border-radius: 20px;
+      padding: 6px 14px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+    .quick-login-btn {
+      font-size: 0.75rem;
+      padding: 4px 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="card-login">
+    <div class="card-header-custom">
+      <div class="mb-2">
+        <i class="bi bi-mortarboard-fill fs-1 text-warning"></i>
+      </div>
+      <h4 class="fw-bold mb-1">SIAKAD UMRAH</h4>
+      <p class="mb-0 small text-white-50">Sistem Informasi Akademik Berbasis Zero Trust</p>
+      <div class="mt-2">
+        <span class="badge bg-light text-dark fw-normal" style="font-size: 0.75rem;">
+          <i class="bi bi-shield-check text-success me-1"></i>PKSJ Fase 2 Hardened
+        </span>
+      </div>
+    </div>
+
+    <div class="card-body p-4">
+      <% 
+        const alertError = (typeof error !== 'undefined' && error && error.length) ? error 
+                         : (typeof flashError !== 'undefined' && flashError && flashError.length) ? flashError 
+                         : null; 
+        const alertSuccess = (typeof success !== 'undefined' && success && success.length) ? success 
+                           : (typeof flashSuccess !== 'undefined' && flashSuccess && flashSuccess.length) ? flashSuccess 
+                           : null; 
+      %>
+
+      <% if (alertError) { %>
+        <div class="alert alert-danger alert-dismissible fade show py-2 px-3 small border-start border-danger border-4 shadow-sm mb-3" role="alert">
+          <div class="d-flex align-items-center">
+            <i class="bi bi-exclamation-octagon-fill fs-5 me-2 text-danger"></i>
+            <div>
+              <strong class="d-block text-danger">Peringatan:</strong>
+              <%= Array.isArray(alertError) ? alertError.join('<br>') : alertError %>
+            </div>
+          </div>
+          <button type="button" class="btn-close btn-sm" data-bs-dismiss="alert"></button>
+        </div>
+      <% } %>
+
+      <% if (alertSuccess) { %>
+        <div class="alert alert-success alert-dismissible fade show py-2 px-3 small border-start border-success border-4 shadow-sm mb-3" role="alert">
+          <div class="d-flex align-items-center">
+            <i class="bi bi-check-circle-fill fs-5 me-2 text-success"></i>
+            <div>
+              <strong class="d-block text-success">Informasi:</strong>
+              <%= Array.isArray(alertSuccess) ? alertSuccess.join('<br>') : alertSuccess %>
+            </div>
+          </div>
+          <button type="button" class="btn-close btn-sm" data-bs-dismiss="alert"></button>
+        </div>
+      <% } %>
+
+      <form method="POST" action="/auth/login" autocomplete="off">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+        <div class="mb-3">
+          <label class="form-label small fw-semibold text-secondary">Username / NIM</label>
+          <div class="input-group">
+            <span class="input-group-text bg-light"><i class="bi bi-person text-secondary"></i></span>
+            <input type="text" class="form-control" id="usernameInput" name="username" placeholder="Masukkan NIM atau username" required autofocus>
+          </div>
+        </div>
+
+        <div class="mb-4">
+          <label class="form-label small fw-semibold text-secondary">Password</label>
+          <div class="input-group">
+            <span class="input-group-text bg-light"><i class="bi bi-lock text-secondary"></i></span>
+            <input type="password" class="form-control" id="passwordInput" name="password" placeholder="Masukkan password" required>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold mb-3">
+          <i class="bi bi-box-arrow-in-right me-1"></i>Masuk ke Sistem
+        </button>
+      </form>
+
+      <!-- Security Guarantee Notes -->
+      <div class="text-center">
+        <span class="badge-security d-inline-block">
+          <i class="bi bi-shield-lock-fill me-1"></i>Dilindungi: Rate Limit (5x), CSRF, Helmet & bcrypt
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+

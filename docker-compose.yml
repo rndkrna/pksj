@@ -1,0 +1,229 @@
+# ============================================================
+# SIAKAD UMRAH - Docker Compose
+# Orkestrasi Container dengan Keamanan Jaringan
+#
+# Referensi Laporan PKSJ:
+# - Tabel 3.1 (Zona Jaringan, Aliran yang Diizinkan, dan Kontrol Utama):
+#   * TB-1: Internet ↔ Server Web (Nginx reverse proxy)
+#   * TB-2: Server Web ↔ Server Aplikasi (internal only)
+#   * TB-3: Server Aplikasi ↔ Server Database (port DB spesifik)
+# - Tabel 4.1 (Baseline Kebijakan Firewall/NGFW):
+#   * FW-01: Internet → Nginx (TCP 443) → Allow
+#   * FW-02: Internet → App langsung → Deny
+#   * FW-03: Nginx → App (port 3000) → Allow
+#   * FW-04: App → DB (TCP 3306) → Allow
+#   * FW-05: User/DMZ → DB → Deny
+# - R-05: Ketersediaan (resource limits, health checks)
+# - Tabel 4.2 (Hardening Host): Resource limits, non-root, rahasia
+#
+# Tim PKSJ UMRAH
+# ============================================================
+
+services:
+  # ==================== DATABASE SERVICE ====================
+  # Tabel 3.1 (Zona Data): "Koneksi basis data hanya dari host aplikasi"
+  # Bab 4.3 (Hardening Host Basis Data):
+  #   "Basis data hanya menerima koneksi dari host aplikasi yang disetujui"
+  #   "Akun aplikasi tidak boleh menggunakan akun superuser"
+  db:
+    image: mysql:8.0
+    container_name: siakad-db
+    restart: unless-stopped
+
+    # R-05 (Ketersediaan): Batasan resource untuk mencegah kehabisan kapasitas
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+    environment:
+      # Bab 4.3: "Akun administratif dipisahkan"
+      MYSQL_ROOT_PASSWORD: ${DOCKER_ROOT_PASSWORD:-SiakadDBRoot@2026!Secure}
+      MYSQL_DATABASE: siakad_dbs
+      # Bab 4.3: Akun layanan terpisah dengan hak minimum (bukan root)
+      MYSQL_USER: siakad_app
+      MYSQL_PASSWORD: SiakadApp@2026!Strong
+
+    volumes:
+      # Data persistent
+      - mysql-data:/var/lib/mysql
+      # Inisialisasi schema saat pertama kali
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+
+    # Expose port 3306 ke localhost agar script dan pengujian lokal dapat terhubung ke MySQL Docker
+    ports:
+      - "3306:3306"
+
+    networks:
+      - siakad-internal  # Tabel 3.1: Zona data (internal only)
+
+    # Tabel 4.2 (Proteksi endpoint): Keamanan tambahan container
+    security_opt:
+      - no-new-privileges:true
+
+    # R-05 (Ketersediaan): Health check database
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -pSiakadDBRoot@2026!Secure || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+    # R-03 (Log Audit): Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ==================== APPLICATION SERVICE ====================
+  # Tabel 3.1 (Zona Aplikasi): Server aplikasi web
+  # Tabel 4.2 (Hardening Host Server Aplikasi)
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: siakad-app
+    restart: unless-stopped
+
+    # R-05 (Ketersediaan): Batasan resource
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+
+    # Tabel 4.2 (Rahasia konfigurasi):
+    # "Simpan kredensial di konfigurasi terlindungi/secret store"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      # FW-04: App → DB (koneksi via hostname internal docker)
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_USER: siakad_app
+      DB_PASSWORD: SiakadApp@2026!Strong
+      DB_NAME: siakad_dbs
+      # R-07 (Sesi): Session secret dari environment
+      SESSION_SECRET: siakad-docker-session-2026-pksj-umrah
+      # R-01 (Autentikasi): Konfigurasi keamanan
+      BCRYPT_SALT_ROUNDS: 12
+      RATE_LIMIT_WINDOW_MS: 900000
+      RATE_LIMIT_MAX: 200
+      LOGIN_RATE_LIMIT_MAX: 5
+      LOGIN_LOCKOUT_MINUTES: 15
+      SESSION_MAX_AGE: 1800000
+
+    # Akses langsung port aplikasi atau melalui Nginx reverse proxy
+    ports:
+      - "3000:3000"
+
+    volumes:
+      # R-03 (Log Audit): Persistent logs
+      - app-logs:/app/logs
+      # R-08 (Backup): Persistent backups
+      - app-backups:/app/backups
+
+    # Tabel 4.2 (Proteksi endpoint):
+    # "Batasi eksekusi dan akses file konfigurasi"
+    security_opt:
+      - no-new-privileges:true
+    read_only: true  # Root filesystem read-only
+    tmpfs:
+      - /tmp:size=64M,noexec,nosuid,nodev
+
+    # FW-04: App membutuhkan DB yang sudah ready
+    depends_on:
+      db:
+        condition: service_healthy
+
+    networks:
+      - siakad-internal   # Tabel 3.1: Komunikasi dengan DB (TB-3)
+      - siakad-dmz        # Tabel 3.1: Komunikasi dengan Nginx (TB-2)
+
+    # R-03 (Log Audit): Logging container
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  # ==================== NGINX REVERSE PROXY ====================
+  # Tabel 3.1 (Zona DMZ): "WAF/reverse proxy di DMZ"
+  # FW-01: Internet → Nginx (TCP 443 HTTPS) → Allow
+  # FW-03: Nginx → App (port 3000) → Allow
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: siakad-nginx
+    restart: unless-stopped
+
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
+
+    # FW-01: Endpoint publik (HTTPS)
+    ports:
+      - "80:80"     # Redirect ke HTTPS
+      - "443:443"   # HTTPS endpoint
+
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - nginx-logs:/var/log/nginx
+
+    depends_on:
+      - app
+
+    networks:
+      - siakad-dmz      # Tabel 3.1: Komunikasi dengan App (TB-2)
+      - siakad-public    # Tabel 3.1: Komunikasi dengan Internet (TB-1)
+
+    security_opt:
+      - no-new-privileges:true
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# ==================== VOLUMES ====================
+# R-03 (Log Audit): Persistent storage untuk logs
+# R-08 (Backup): Persistent storage untuk backups
+volumes:
+  mysql-data:
+    driver: local
+  app-logs:
+    driver: local
+  app-backups:
+    driver: local
+  nginx-logs:
+    driver: local
+
+# ==================== NETWORKS ====================
+# Tabel 3.1 (Zona Jaringan): Segmentasi jaringan sesuai trust boundaries
+networks:
+  # TB-3: Zona internal (App ↔ DB) — TIDAK ada akses internet
+  # FW-05: Mencegah koneksi langsung dari luar ke database
+  siakad-internal:
+    driver: bridge
+    internal: true  # PENTING: Tidak ada akses internet langsung
+
+  # TB-2: Zona DMZ (Nginx ↔ App) — komunikasi antara reverse proxy dan app
+  siakad-dmz:
+    driver: bridge
+    internal: true  # Internal only, tidak perlu akses internet
+
+  # TB-1: Zona publik (Internet ↔ Nginx) — hanya Nginx yang terekspos
+  siakad-public:
+    driver: bridge

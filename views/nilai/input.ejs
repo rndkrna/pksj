@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.2/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="/public/css/style.css" rel="stylesheet">
+</head>
+<body>
+  <%- include('../partials/navbar') %>
+
+  <div class="container-fluid">
+    <div class="row">
+      <%- include('../partials/sidebar') %>
+
+      <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 main-content">
+        <% if (typeof success !== 'undefined' && success && success.length > 0) { %>
+          <div class="alert alert-success alert-dismissible fade show mt-2"><i class="bi bi-check-circle-fill me-2"></i><%= success %><button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+        <% } %>
+        <% if (typeof error !== 'undefined' && error && error.length > 0) { %>
+          <div class="alert alert-danger alert-dismissible fade show mt-2"><i class="bi bi-exclamation-triangle-fill me-2"></i><%= error %><button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+        <% } %>
+
+        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+          <div>
+            <h4 class="fw-bold mb-0">
+              <i class="bi bi-pencil-square text-primary me-2"></i>Penginputan Nilai: <%= kodeMK %> - <%= namaMK %> (Kelas <%= kodeKelas %>)
+            </h4>
+            <div class="text-secondary small mt-1">Bobot Penilaian: Tugas (30%) + UTS (30%) + UAS (40%)</div>
+          </div>
+          <a href="/nilai" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Kembali ke Daftar Kelas</a>
+        </div>
+
+        <div class="security-alert-box">
+          <div class="fw-bold text-success mb-1">
+            <i class="bi bi-shield-check me-1"></i>Jaminan Integritas Nilai (R-02 / CT-04)
+          </div>
+          <div class="small text-secondary">
+            Kalkulasi nilai akhir dan huruf mutu dilakukan secara terotorisasi di server-side menggunakan kueri berparameter. Setiap tindakan simpan atau perubahan nilai dicatat bersama identitas dosen penginput ke dalam Log Audit Sistem.
+          </div>
+        </div>
+
+        <div class="card border-0 shadow-sm">
+          <div class="card-body p-4">
+            <form method="POST" action="/nilai/save">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <input type="hidden" name="kelas_id" value="<%= kelasId %>">
+
+              <div class="table-responsive">
+                <table class="table table-bordered align-middle">
+                  <thead class="table-light">
+                    <tr>
+                      <th style="width: 50px;">No</th>
+                      <th>NIM</th>
+                      <th>Nama Mahasiswa</th>
+                      <th style="width: 130px;">Tugas (30%)</th>
+                      <th style="width: 130px;">UTS (30%)</th>
+                      <th style="width: 130px;">UAS (40%)</th>
+                      <th style="width: 120px;" class="text-center">Nilai Akhir</th>
+                      <th style="width: 90px;" class="text-center">Huruf</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <% mahasiswaList.forEach((m, idx) => { %>
+                      <tr data-krs-row>
+                        <td class="text-center"><%= idx + 1 %></td>
+                        <td><code><%= m.nim %></code></td>
+                        <td class="fw-semibold"><%= m.nama_mahasiswa %></td>
+                        <td>
+                          <input type="hidden" name="krs_id" value="<%= m.krs_id %>">
+                          <input type="number" step="0.01" min="0" max="100" name="nilai_tugas" class="form-control form-control-sm" value="<%= m.nilai_tugas !== null ? m.nilai_tugas : '' %>" placeholder="0-100">
+                        </td>
+                        <td>
+                          <input type="number" step="0.01" min="0" max="100" name="nilai_uts" class="form-control form-control-sm" value="<%= m.nilai_uts !== null ? m.nilai_uts : '' %>" placeholder="0-100">
+                        </td>
+                        <td>
+                          <input type="number" step="0.01" min="0" max="100" name="nilai_uas" class="form-control form-control-sm" value="<%= m.nilai_uas !== null ? m.nilai_uas : '' %>" placeholder="0-100">
+                        </td>
+                        <td class="text-center fw-bold cell-nilai-akhir">
+                          <%= m.nilai_akhir !== null ? Number(m.nilai_akhir).toFixed(2) : '-' %>
+                        </td>
+                        <td class="text-center">
+                          <% if (m.huruf_mutu) { %>
+                            <span class="badge bg-<%= gradeColor(m.huruf_mutu) %> badge-huruf-mutu"><%= m.huruf_mutu %></span>
+                          <% } else { %>
+                            <span class="text-muted small">-</span>
+                          <% } %>
+                        </td>
+                      </tr>
+                    <% }) %>
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="d-flex justify-content-between align-items-center mt-3">
+                <span class="text-muted small"><i class="bi bi-info-circle me-1"></i>Tekan Simpan Nilai untuk memperbarui dan mencatat ke audit trail.</span>
+                <button type="submit" class="btn btn-primary px-4 py-2 fw-semibold">
+                  <i class="bi bi-save2-fill me-1"></i>Simpan Seluruh Nilai
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="/public/js/app.js"></script>
+</body>
+</html>
+

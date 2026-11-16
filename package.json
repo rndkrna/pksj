@@ -1,0 +1,35 @@
+{
+  "name": "siakad-umrah-security",
+  "version": "1.0.0",
+  "description": "Sistem Informasi Akademik (SIAKAD) UMRAH dengan Arsitektur Keamanan PKSJ Fase 1 & 2",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "init-db": "node scripts/init-db.js",
+    "backup": "node scripts/backup.js",
+    "test:security": "node scripts/security-check.js",
+    "test:insecure": "node scripts/security-check.js --target security-tests/insecure",
+    "test:secrets": "node scripts/secret-scan.js",
+    "test:all": "npm run test:secrets && npm run test:security"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "connect-flash": "^0.1.1",
+    "cookie-parser": "^1.4.6",
+    "csurf": "^1.11.0",
+    "dotenv": "^16.4.5",
+    "ejs": "^3.1.9",
+    "express": "^4.19.2",
+    "express-rate-limit": "^7.2.0",
+    "express-session": "^1.18.0",
+    "express-validator": "^7.0.1",
+    "helmet": "^7.1.0",
+    "mysql2": "^3.9.7",
+    "winston": "^3.13.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  }
+}
+

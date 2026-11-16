@@ -1,0 +1,5 @@
+# ============================================================
+# SIAKAD UMRAH - Trivy Ignore List
+# Menampung CVE yang sudah di-mitigasi pada level arsitektur
+# ============================================================
+# Contoh: CVE mitigasi pada perimeter reverse proxy / rate limiter

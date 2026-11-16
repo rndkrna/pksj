@@ -1,0 +1,44 @@
+# ============================================================
+# SIAKAD UMRAH - Docker Ignore
+# Referensi: Tabel 4.2 (Rahasia Konfigurasi)
+# "Jangan commit rahasia ke repositori"
+# ============================================================
+
+# Dependencies (di-install ulang saat build)
+node_modules
+npm-debug.log*
+
+# File environment & rahasia (Tabel 4.2: Rahasia Konfigurasi)
+.env
+.env.local
+.env.*.local
+
+# Logs & Backups (data runtime)
+logs/
+backups/
+*.log
+
+# Git & Version Control
+.git
+.gitignore
+
+# IDE & Editor
+.vscode
+.idea
+*.swp
+*.swo
+
+# Dokumentasi & Test
+README.md
+docs/
+security-tests/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Kubernetes manifests (tidak perlu di dalam image)
+k8s/
+
+# Security configs (dokumentasi, bukan runtime)
+security/

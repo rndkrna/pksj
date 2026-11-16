@@ -1,0 +1,45 @@
+# ============================================================
+# SIAKAD UMRAH - Kubernetes Services
+# Referensi: Tabel 4.1 (FW-03 & FW-05)
+# FW-03: Akses ke App melalui port aplikasi (ClusterIP)
+# FW-05: Database TIDAK terekspos ke luar (ClusterIP internal saja)
+# ============================================================
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: siakad-app-svc
+  namespace: siakad
+  labels:
+    app: siakad
+    tier: app
+spec:
+  type: ClusterIP
+  selector:
+    app: siakad
+    tier: app
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000
+      protocol: TCP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: siakad-db-svc
+  namespace: siakad
+  labels:
+    app: siakad
+    tier: database
+spec:
+  type: ClusterIP
+  selector:
+    app: siakad
+    tier: database
+  ports:
+    - name: mysql
+      port: 3306
+      targetPort: 3306
+      protocol: TCP

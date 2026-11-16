@@ -1,0 +1,81 @@
+<nav id="sidebarMenu" class="col-md-3 col-lg-2 d-md-block sidebar collapse">
+  <div class="sidebar-sticky">
+    <div class="px-3 py-2 text-white-50 border-bottom border-secondary mb-2 small">
+      <div><strong class="text-white">Sistem Informasi Akademik</strong></div>
+      <div style="font-size: 0.75rem;">FTTK - Univ. Maritim Raja Ali Haji</div>
+    </div>
+
+    <ul class="nav flex-column">
+      <li class="nav-item">
+        <a class="nav-link <%= currentPath === '/dashboard' ? 'active' : '' %>" href="/dashboard">
+          <i class="bi bi-speedometer2 me-2"></i>Dashboard
+        </a>
+      </li>
+
+      <% if (user.role === 'mahasiswa') { %>
+        <li class="nav-item">
+          <a class="nav-link <%= currentPath.startsWith('/krs') ? 'active' : '' %>" href="/krs">
+            <i class="bi bi-journal-check me-2"></i>KRS Online
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link <%= currentPath.startsWith('/nilai') ? 'active' : '' %>" href="/nilai">
+            <i class="bi bi-card-checklist me-2"></i>Transkrip Nilai
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link <%= currentPath.startsWith('/jadwal') ? 'active' : '' %>" href="/jadwal">
+            <i class="bi bi-calendar3 me-2"></i>Jadwal Kuliah
+          </a>
+        </li>
+      <% } %>
+
+      <% if (user.role === 'dosen') { %>
+        <li class="nav-item">
+          <a class="nav-link <%= currentPath.startsWith('/nilai') ? 'active' : '' %>" href="/nilai">
+            <i class="bi bi-pencil-square me-2"></i>Kelola Nilai
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link <%= currentPath.startsWith('/jadwal') ? 'active' : '' %>" href="/jadwal">
+            <i class="bi bi-calendar-week me-2"></i>Jadwal Mengajar
+          </a>
+        </li>
+      <% } %>
+
+      <% if (user.role === 'admin') { %>
+        <h6 class="sidebar-heading px-3 mt-3 mb-1 text-uppercase">
+          <span>Manajemen Sistem</span>
+        </h6>
+        <li class="nav-item">
+          <a class="nav-link <%= currentPath.startsWith('/admin/users') ? 'active' : '' %>" href="/admin/users">
+            <i class="bi bi-people me-2"></i>Data Pengguna
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link <%= currentPath.startsWith('/jadwal') ? 'active' : '' %>" href="/jadwal">
+            <i class="bi bi-calendar3 me-2"></i>Jadwal Keseluruhan
+          </a>
+        </li>
+
+        <h6 class="sidebar-heading px-3 mt-3 mb-1 text-uppercase text-warning">
+          <span>Keamanan & Audit</span>
+        </h6>
+        <li class="nav-item">
+          <a class="nav-link <%= currentPath.startsWith('/admin/audit-log') ? 'active' : '' %>" href="/admin/audit-log">
+            <i class="bi bi-shield-lock me-2"></i>Audit Log Sistem
+          </a>
+        </li>
+      <% } %>
+    </ul>
+
+    <div class="mt-auto px-3 py-3 border-top border-secondary">
+      <div class="badge bg-dark border border-secondary text-light w-100 p-2 text-start small">
+        <i class="bi bi-shield-shaded text-success me-1"></i>
+        <span>Security Hardened</span>
+        <div class="text-white-50" style="font-size: 0.7rem;">PKSJ Fase 1 & 2 Active</div>
+      </div>
+    </div>
+  </div>
+</nav>
+

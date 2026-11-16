@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.2/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="/public/css/style.css" rel="stylesheet">
+</head>
+<body>
+  <%- include('../partials/navbar') %>
+
+  <div class="container-fluid">
+    <div class="row">
+      <%- include('../partials/sidebar') %>
+
+      <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 main-content">
+        <% if (typeof error !== 'undefined' && error && error.length > 0) { %>
+          <div class="alert alert-danger alert-dismissible fade show mt-2"><i class="bi bi-exclamation-triangle-fill me-2"></i><%= error %><button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+        <% } %>
+
+        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+          <h4 class="fw-bold"><i class="bi bi-plus-circle text-primary me-2"></i>Pilih Mata Kuliah untuk KRS</h4>
+          <div>
+            <span class="badge bg-info text-dark fs-6 px-3 py-2 me-2">SKS Anda: <%= totalSKS %> / 24</span>
+            <a href="/krs" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Kembali ke KRS</a>
+          </div>
+        </div>
+
+        <div class="card border-0 shadow-sm">
+          <div class="card-header bg-white fw-bold">
+            Daftar Kelas Perkuliahan yang Tersedia (TA <%= tahunAjaran %> - Semester <%= semesterType.toUpperCase() %>)
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table table-hover mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th>Kode MK</th>
+                    <th>Nama Mata Kuliah</th>
+                    <th>Semester</th>
+                    <th>SKS</th>
+                    <th>Kelas</th>
+                    <th>Dosen Pengampu</th>
+                    <th>Kapasitas</th>
+                    <th class="text-center">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% if (availableKelas.length === 0) { %>
+                    <tr>
+                      <td colspan="8" class="text-center py-4 text-muted">
+                        Tidak ada kelas tambahan yang tersedia untuk diambil pada semester ini.
+                      </td>
+                    </tr>
+                  <% } %>
+                  <% availableKelas.forEach(k => { %>
+                    <tr>
+                      <td><code><%= k.kode_mk %></code></td>
+                      <td class="fw-semibold"><%= k.nama_mk %></td>
+                      <td>Semester <%= k.semester %></td>
+                      <td><strong><%= k.sks %> SKS</strong></td>
+                      <td><span class="badge bg-secondary"><%= k.kode_kelas %></span></td>
+                      <td class="small"><%= k.nama_dosen %></td>
+                      <td>
+                        <span class="badge bg-<%= k.terisi >= k.kapasitas ? 'danger' : 'light text-dark border' %>">
+                          <%= k.terisi %> / <%= k.kapasitas %>
+                        </span>
+                      </td>
+                      <td class="text-center">
+                        <% if (k.terisi >= k.kapasitas) { %>
+                          <span class="badge bg-danger">Penuh</span>
+                        <% } else if (totalSKS + k.sks > 24) { %>
+                          <span class="badge bg-warning text-dark" title="Melebihi batas 24 SKS">Batas SKS</span>
+                        <% } else { %>
+                          <form action="/krs/add" method="POST" class="d-inline">
+                            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                            <input type="hidden" name="kelas_id" value="<%= k.id %>">
+                            <button type="submit" class="btn btn-success btn-sm py-1 px-3">
+                              <i class="bi bi-check-lg me-1"></i>Pilih
+                            </button>
+                          </form>
+                        <% } %>
+                      </td>
+                    </tr>
+                  <% }) %>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="/public/js/app.js"></script>
+</body>
+</html>
+

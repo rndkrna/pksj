@@ -1,0 +1,35 @@
+# ============================================================
+# SIAKAD UMRAH - Kubernetes Ingress (TLS Termination)
+# Referensi: Tabel 3.1 & Tabel 4.1 (FW-01: Internet → HTTPS 443 Allow)
+# ============================================================
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: siakad-ingress
+  namespace: siakad
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "1m"
+    # Security Headers (R-04: Kerahasiaan)
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      more_set_headers "X-Frame-Options: SAMEORIGIN";
+      more_set_headers "X-Content-Type-Options: nosniff";
+      more_set_headers "X-XSS-Protection: 1; mode=block";
+      more_set_headers "Strict-Transport-Security: max-age=31536000; includeSubDomains";
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - siakad.umrah.ac.id
+      secretName: siakad-tls-secret
+  rules:
+    - host: siakad.umrah.ac.id
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: siakad-app-svc
+                port:
+                  number: 3000

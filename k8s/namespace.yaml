@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: siakad
+  labels:
+    name: siakad
+    app.kubernetes.io/name: siakad-umrah
+    # Pod Security Admission: Baseline & Restricted (Tabel 4.2 Proteksi Endpoint)
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
